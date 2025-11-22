@@ -65,26 +65,22 @@ print(processed_text[:200] + "...")
 # ============================================================================
 print("\n\n======= 6. BIGRAM PROBABILITY =======\n")
 
-#N-gram function 
+# N-gram function 
 def extract_gram(tokens, n):
     return [tuple(tokens[i:i+n]) for i in range(len(tokens)-n+1)]
 
-
+# Build bigram and unigram counts from training data
 bigrams = extract_gram(lemmatized_words, 2)
 bigram_counts = Counter(bigrams)
 unigram_counts = Counter(lemmatized_words)
 
 print(f"Total words in dataset: {len(lemmatized_words)}")
-print(f"Total bigrams: {len(bigrams)}")
-print(f"Most common bigrams: {bigram_counts.most_common(5)}\n")
+print(f"Total bigrams: {len(bigrams)}\n")
 
-# Select 10 sentences from the original dataset
-print("------- CALCULATING PROBABILITY FOR 10 SENTENCES -------\n")
+print("------- ANALYZING 10 SENTENCES -------\n")
 
-selected_sentences = sentences[:10]
-
-for i, sentence in enumerate(selected_sentences, 1):
-    
+for i, sentence in enumerate(sentences[:10], 1):
+    # Process sentence
     sent_tokens = []
     for token in sentence.lower().split():
         if token not in stopwords_list:
@@ -92,34 +88,42 @@ for i, sentence in enumerate(selected_sentences, 1):
             if word:
                 sent_tokens.append(lemmatizer.lemmatize(word))
     
-    if len(sent_tokens) < 2:
-        print(f"Sentence {i}: (too short after processing)\n")
+    # Take first 5 words only
+    first_5_words = sent_tokens[:5]
+    
+    if len(first_5_words) < 1:
+        print(f"Sentence {i}: (no words after processing)\n")
         continue
     
     print(f"Sentence {i}: {sentence}")
-    print(f"Processed: {' '.join(sent_tokens)}")
+    print(f"First 5 words after processing: {first_5_words}\n")
     
-    # Extract bigrams from sentence
-    sent_bigrams = extract_gram(sent_tokens, 2)
-    print(f"Bigrams: {sent_bigrams}")
+    # Calculate unigram probability for each word
+    print("Unigram Probabilities:")
+    total_words = len(lemmatized_words)
+    for word in first_5_words:
+        word_count = unigram_counts[word]
+        unigram_prob = word_count / total_words
+        print(f"  P({word}) = {word_count}/{total_words} = {unigram_prob:.6f}")
     
-    # Calculate probability by multiplying all bigram probabilities
-    probability = 1.0
-    print("Calculations:")
-    
-    for bg in sent_bigrams:
-        word1, word2 = bg[0], bg[1]
-        bigram_count = bigram_counts[bg]
-        unigram_count = unigram_counts[word1]
+    # Find top 5 bigrams for these words
+    print("\nTop 5 Bigrams for each word:")
+    for word in first_5_words:
+        # Get all bigrams starting with this word
+        word_bigrams = [(bg, count) for bg, count in bigram_counts.items() if bg[0] == word]
         
-        if unigram_count == 0:
-            probability = 0
-            print(f"  P({word2}|{word1}) = 0 (word '{word1}' not in training)")
-            break
+        if not word_bigrams:
+            print(f"  '{word}' -> No bigrams found")
+            continue
         
-        bg_prob = bigram_count / unigram_count
-        probability *= bg_prob
-        print(f"  P({word2}|{word1}) = Count({word1},{word2})/Count({word1}) = {bigram_count}/{unigram_count} = {bg_prob:.6f}")
+        # Sort by count and get top 5
+        top_5_bigrams = sorted(word_bigrams, key=lambda x: x[1], reverse=True)[:5]
+        
+        print(f"  '{word}' ->")
+        for bg, count in top_5_bigrams:
+            word1, word2 = bg[0], bg[1]
+            unigram_count = unigram_counts[word1]
+            bg_prob = count / unigram_count
+            print(f"    {bg}: P({word2}|{word1}) = {count}/{unigram_count} = {bg_prob:.6f}")
     
-    print(f"\nFinal Probability = {probability:.15e}")
-    print("=" * 80 + "\n") 
+    print("=" * 80 + "\n")
